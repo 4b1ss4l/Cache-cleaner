@@ -15,50 +15,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Baixar codigo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Configurar Java
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Configurar Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.3.1'
-
-      - name: Configurar Android SDK
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Instalar SDK necessario
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses || true
+
+      - name: Install Android SDK packages
         run: |
-          sdkmanager "platforms;android-36.1"
+          sdkmanager "platforms;android-36"
           sdkmanager "build-tools;36.0.0"
           sdkmanager "platform-tools"
 
-      - name: Criar chave de assinatura Debug
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Debug APK
         run: |
-          keytool -genkeypair -v \
-            -keystore debug.keystore \
-            -storetype JKS \
-            -storepass android \
-            -alias androiddebugkey \
-            -keypass android \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -dname "CN=Android Debug,O=Android,C=US"
+          chmod +x ./gradlew
+          ./gradlew --no-daemon :app:assembleDebug
 
-      - name: Compilar APK
-        run: gradle --no-daemon :app:assembleDebug
-
-      - name: Disponibilizar APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Cache-Cleaner-APK
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 7
-          
